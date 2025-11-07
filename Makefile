@@ -15,7 +15,7 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%d")
 BUILD_TIMESTAMP := $(shell date -u +"%Y-%m-%dT%H:%M:%S%Z")
 VCS_BRANCH := $(strip $(shell git rev-parse --abbrev-ref HEAD | tr / -))
 VCS_REF := $(strip $(shell [ -d .git ] && git rev-parse --short HEAD))
-DOCKER_REPO ?= quay.io/observatorium/api
+DOCKER_REPO ?= quay.io/btaani/api
 
 CONTAINER_CMD := docker run --rm \
 		-u="$(shell id -u):$(shell id -g)" \

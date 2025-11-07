@@ -51,6 +51,8 @@ const (
 	promRulesRoute             = "/api/prom/rules"
 	promRulesPerNamespaceRoute = "/api/prom/rules/{namespace}"
 	promRulesPerGroupNameRoute = "/api/prom/rules/{namespace}/{groupName}"
+
+	patternsRoute = "/loki/api/v1/patterns"
 )
 
 type handlerConfiguration struct {
@@ -234,6 +236,10 @@ func NewHandler(read, tail, write, rules *url.URL, rulesReadOnly bool, tlsOption
 			r.Handle(promSeriesRoute, c.instrument.NewHandler(
 				prometheus.Labels{"group": "logsv1", "handler": "series"},
 				otelhttp.WithRouteTag(c.spanRoutePrefix+promSeriesRoute, proxyRead),
+			))
+			r.Handle(patternsRoute, c.instrument.NewHandler(
+				prometheus.Labels{"group": "logsv1", "handler": "patterns"},
+				otelhttp.WithRouteTag(c.spanRoutePrefix+patternsRoute, proxyRead),
 			))
 		})
 	}
