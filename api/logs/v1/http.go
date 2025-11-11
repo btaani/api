@@ -151,7 +151,7 @@ func (n nopInstrumentHandler) NewHandler(labels prometheus.Labels, handler http.
 	return handler.ServeHTTP
 }
 
-func NewHandler(read, tail, write, rules *url.URL, rulesReadOnly bool, tlsOptions *tls.UpstreamOptions, opts ...HandlerOption) http.Handler {
+func NewHandler(read, tail, write, patterns, rules *url.URL, rulesReadOnly bool, tlsOptions *tls.UpstreamOptions, opts ...HandlerOption) http.Handler {
 	c := &handlerConfiguration{
 		logger:     log.NewNopLogger(),
 		registry:   prometheus.NewRegistry(),
@@ -237,9 +237,37 @@ func NewHandler(read, tail, write, rules *url.URL, rulesReadOnly bool, tlsOption
 				prometheus.Labels{"group": "logsv1", "handler": "series"},
 				otelhttp.WithRouteTag(c.spanRoutePrefix+promSeriesRoute, proxyRead),
 			))
+		})
+	}
+
+	if patterns != nil {
+		var proxyPatterns http.Handler
+		{
+			middlewares := proxy.Middlewares(
+				proxy.MiddlewareSetUpstream(patterns),
+				proxy.MiddlewareSetPrefixHeader(),
+				proxy.MiddlewareLogger(c.logger),
+				proxy.MiddlewareMetrics(c.registry, prometheus.Labels{"proxy": "logsv1-patterns"}),
+			)
+
+			t := &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: dialTimeout,
+				}).DialContext,
+				TLSClientConfig: tlsOptions.NewClientConfig(),
+			}
+
+			proxyPatterns = &httputil.ReverseProxy{
+				Director:  middlewares,
+				ErrorLog:  proxy.Logger(c.logger),
+				Transport: otelhttp.NewTransport(t),
+			}
+		}
+		r.Group(func(r chi.Router) {
+			r.Use(c.readMiddlewares...)
 			r.Handle(patternsRoute, c.instrument.NewHandler(
 				prometheus.Labels{"group": "logsv1", "handler": "patterns"},
-				otelhttp.WithRouteTag(c.spanRoutePrefix+patternsRoute, proxyRead),
+				otelhttp.WithRouteTag(c.spanRoutePrefix+patternsRoute, proxyPatterns),
 			))
 		})
 	}
