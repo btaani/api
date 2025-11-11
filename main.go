@@ -160,6 +160,7 @@ type metricsConfig struct {
 type logsConfig struct {
 	readEndpoint         *url.URL
 	writeEndpoint        *url.URL
+	patternsEndpoint     *url.URL
 	tailEndpoint         *url.URL
 	rulesEndpoint        *url.URL
 	upstreamWriteTimeout time.Duration
@@ -795,6 +796,7 @@ func main() {
 								cfg.logs.readEndpoint,
 								cfg.logs.tailEndpoint,
 								cfg.logs.writeEndpoint,
+								cfg.logs.patternsEndpoint,
 								cfg.logs.rulesEndpoint,
 								cfg.logs.rulesReadOnly,
 								logsUpstreamClientOptions,
@@ -1112,6 +1114,7 @@ func parseFlags() (config, error) {
 		rawLogsRulesEndpoint           string
 		rawLogsTailEndpoint            string
 		rawLogsWriteEndpoint           string
+		rawLogsPatternsEndpoint        string
 		rawLogsRuleLabelFilters        string
 		rawLogsAuthExtractSelectors    string
 		rawTracesReadEndpoint          string
@@ -1182,6 +1185,8 @@ func parseFlags() (config, error) {
 
 	flag.StringVar(&rawLogsWriteEndpoint, "logs.write.endpoint", "",
 		"The endpoint against which to make write requests for logs.")
+	flag.StringVar(&rawLogsPatternsEndpoint, "logs.patterns.endpoint", "",
+		"The endpoint against which to make patterns requests for logs.")
 	flag.StringVar(&rawLogsAuthExtractSelectors, "logs.auth.extract-selectors", "",
 		"Comma-separated list of stream selectors that should be extracted from queries and sent to OPA during authorization.")
 	flag.StringVar(&rawMetricsReadEndpoint, "metrics.read.endpoint", "",
@@ -1396,6 +1401,16 @@ func parseFlags() (config, error) {
 		}
 
 		cfg.logs.writeEndpoint = logsWriteEndpoint
+	}
+
+	if rawLogsPatternsEndpoint != "" {
+		cfg.logs.enabled = true
+
+		logsPatternsEndpoint, err := url.ParseRequestURI(rawLogsPatternsEndpoint)
+		if err != nil {
+			return cfg, fmt.Errorf("--logs.patterns.endpoint is invalid, raw %s: %w", rawLogsPatternsEndpoint, err)
+		}
+		cfg.logs.patternsEndpoint = logsPatternsEndpoint
 	}
 
 	if cfg.traces.readTemplateEndpoint != "" {
