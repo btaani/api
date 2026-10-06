@@ -10,7 +10,13 @@ WORKDIR /opt
 
 RUN git update-index --refresh; make build OS=${TARGETOS} ARCH=${TARGETARCH}
 
-FROM alpine:3.23 as runner
+FROM registry.access.redhat.com/ubi9/ubi-minimal as policy-builder
+RUN microdnf install -y crypto-policies-scripts && \
+    update-crypto-policies --set DEFAULT:PQ && \
+    microdnf clean all
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal
+COPY --from=policy-builder /etc/crypto-policies/ /etc/crypto-policies/
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /opt/observatorium-api /bin/observatorium-api
